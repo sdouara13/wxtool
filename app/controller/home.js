@@ -24,7 +24,9 @@ class HomeController extends Controller {
       this.ctx.body = null;
     }
   }
-  async get
+  async getTaoken() {
+
+  }
 }
 
 module.exports = HomeController;
