@@ -8,7 +8,7 @@ class HomeController extends Controller {
   async index() {
     this.ctx.body = 'hi, egg';
   }
-  async wxtoken() {
+  async WXtoken() {
     console.log('验证token');
     const query = this.ctx.query;
     console.log('参数', query);
@@ -24,7 +24,7 @@ class HomeController extends Controller {
       this.ctx.body = null;
     }
   }
-  async getwxtoken() {
+  async getWXtoken() {
     const { nonce, timestamp } = this.ctx.query;
     const array = [ nonce, timestamp, token ];
     array.sort();
