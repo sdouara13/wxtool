@@ -13,6 +13,10 @@ class DeviceController extends Controller {
     channel.emit('device', deviceid);
     id++;
   }
+  async scanQRCode() {
+    const { deviceid } = this.ctx.query;
+    channel.emit('scanQRCode', deviceid);
+  }
 }
 
 module.exports = DeviceController;

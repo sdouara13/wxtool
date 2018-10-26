@@ -16,7 +16,7 @@ io.origins((origin, callback) => {
   // if (origin !== 'https://foo.example.com') {
   //   return callback('origin not allowed', false);
   // }
-  console.log("ws连接", origin)
+  console.log('ws连接', origin)
   callback(null, true);
 });
 io.on('connection', socket => {
@@ -50,5 +50,16 @@ console.log('启动socket服务', config);
 channel.on('device', deviceid => {
   console.log('新控制器创建');
   clients.set(deviceid, 'nodevice');
+});
+
+channel.on('scanQRCode', deviceid => {
+  const socket = clients.get(deviceid)
+  if (socket && socket !== 'nodedevice') {
+    console.log('扫一扫', deviceid);
+    socket.emit(event, {
+      cmd: 'scanQRCode',
+      seqno: '123456',
+    });
+  }
 })
 

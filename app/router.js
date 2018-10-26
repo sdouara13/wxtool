@@ -9,4 +9,5 @@ module.exports = app => {
   router.get('/wxtoken', controller.home.WXtoken);
   router.get('/getwxtoken', controller.home.getWXtoken);
   router.get('/getdeviceid', controller.device.getDeviceId);
+  router.get('/scanqrcode', controller.device.scanQRCode);
 };
