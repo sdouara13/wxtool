@@ -11,7 +11,14 @@ const io = Server(server, config);
 
 const clients = new Map();
 const event = config.event;
-io.origins([ 'http://10.12.130.110:8081', 'http://10.12.130.110:8080', 'http://139.159.210.220' ]);
+// io.origins([ 'http://10.12.130.110:8081', 'http://10.12.130.110:8080', 'http://139.159.210.220' ]);
+io.origins((origin, callback) => {
+  // if (origin !== 'https://foo.example.com') {
+  //   return callback('origin not allowed', false);
+  // }
+  console.log("ws连接", origin)
+  callback(null, true);
+});
 io.on('connection', socket => {
   let id;
   console.log('新设备接入', socket.id, '当前设备数量', clients.size);
