@@ -37,7 +37,7 @@ io.on('connection', socket => {
     console.log('当前设备数量', clients.size);
   });
 });
-server.listen(3843);
+server.listen(config.port);
 console.log('启动socket服务', config);
 
 channel.on('device', deviceid => {
