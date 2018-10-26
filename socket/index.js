@@ -11,7 +11,7 @@ const io = Server(server, config);
 
 const clients = new Map();
 const event = config.event;
-io.origins([ 'http://10.12.130.110:8081', 'http://139.159.210.220' ]);
+io.origins([ 'http://10.12.130.110:8081', 'http://10.12.130.110:8080', 'http://139.159.210.220' ]);
 io.on('connection', socket => {
   let id;
   console.log('新设备接入', socket.id, '当前设备数量', clients.size);
@@ -37,7 +37,7 @@ io.on('connection', socket => {
     console.log('当前设备数量', clients.size);
   });
 });
-server.listen(3000);
+server.listen(3843);
 console.log('启动socket服务', config);
 
 channel.on('device', deviceid => {
