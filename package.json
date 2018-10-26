@@ -28,6 +28,7 @@
     "start": "egg-scripts start --daemon --title=egg-server-example",
     "stop": "egg-scripts stop --title=egg-server-example",
     "dev": "egg-bin dev",
+    "refresh": "git pull&npm run build",
     "debug": "egg-bin debug",
     "test": "npm run lint -- --fix && npm run test-local",
     "test-local": "egg-bin test",
