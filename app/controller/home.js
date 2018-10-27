@@ -6,6 +6,16 @@ const Controller = require('egg').Controller;
 
 const token = 'lidaibin';
 const config = require('../../config/wx');
+const access_token = {
+  value: null,
+  expire: null,
+  timeout: 7200 * 1000,
+};
+const jsapi_ticket = {
+  value: null,
+  expire: null,
+  timeout: 7200 * 1000,
+};
 class HomeController extends Controller {
   async index() {
     this.ctx.body = 'hi, egg';
@@ -27,32 +37,80 @@ class HomeController extends Controller {
     }
   }
   async getWXtoken() {
-    const { nonce, timestamp } = this.ctx.query;
-    const options = {
-      uri: 'https://api.weixin.qq.com/cgi-bin/token',
-      qs: {
-        grant_type: 'client_credential',
-        appid: config.appid,
-        secret: config.secret,
-      },
-      headers: {
-        'User-Agent': 'Request-Promise',
-      },
-      json: true,
-    };
-    request(options)
-      .then(res => {
-        console.log('申请accesstoken结果', res);
-      })
-      .catch(err => {
-        console.log('申请accesstoken失败', err);
-      })
-    // request.get(`https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${config.appid}&secret=${config.secret}`);
-    const array = [ nonce, timestamp, token ];
-    array.sort();
-    const str = array.join('');
-    const sign = sha1(str);
-    this.ctx.body = sign;
+    const { nonceStr, timestamp, deviceid } = this.ctx.query;
+    if (access_token.value === null || (Date.now() - access_token.expire) > access_token.timeout ||
+      jsapi_ticket.value === null || (Date.now() - jsapi_ticket.expire) > jsapi_ticket.timeout) {
+      const self = this;
+      const options = {
+        uri: 'https://api.weixin.qq.com/cgi-bin/token',
+        qs: {
+          grant_type: 'client_credential',
+          appid: config.appid,
+          secret: config.secret,
+        },
+        headers: {
+          'User-Agent': 'Request-Promise',
+        },
+        json: true,
+      };
+      request(options)
+        .then(res => {
+          console.log('申请accesstoken结果', res);
+          if (res.access_token) {
+            access_token.value = res.access_token;
+            access_token.expire = Date.now();
+            /**
+             * 获取jsapi_ticket
+             * */
+            const ticketOption = {
+              uri: 'https://api.weixin.qq.com/cgi-bin/ticket/getticket',
+              qs: {
+                access_token: access_token.value,
+                type: 'jsapi',
+              },
+              headers: {
+                'User-Agent': 'Request-Promise',
+              },
+              json: true,
+            };
+            return request(ticketOption);
+          }
+          access_token.value = null;
+          access_token.expire = null;
+          return new Promise((resolve, reject) => {
+            reject('结果中无access_token');
+          });
+        })
+        .then(res => {
+          if (res.ticket) {
+            console.log('更新ticket', res);
+            jsapi_ticket.value = res.ticket;
+            jsapi_ticket.expire = Date.now();
+            const url = `http://www.wxapidev.cn/wxsimulator/?deviceid=${deviceid}`;
+            const str = `jsapi_ticket=${jsapi_ticket.value}&noncestr=${nonceStr}&timestamp=${timestamp}&url=${url}`;
+            const sign = sha1(str);
+            self.ctx.body = sign;
+          } else {
+            return new Promise((resolve, reject) => {
+              reject('结果中无jsapi_ticket');
+            });
+          }
+        })
+        .catch(err => {
+          console.log('失败', err);
+          self.ctx.body = {
+            err,
+          };
+        });
+    } else {
+      /**
+       * 直接使用现有ticket
+       * */
+      const url = `http://www.wxapidev.cn/wxsimulator/?deviceid=${deviceid}`;
+      const str = `jsapi_ticket=${jsapi_ticket.value}&noncestr=${nonceStr}&timestamp=${timestamp}&url=${url}`;
+      const sign = sha1(str);
+      this.ctx.body = sign;
+    }
   }
 }
 
