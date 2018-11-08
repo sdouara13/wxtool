@@ -115,6 +115,7 @@ class HomeController extends Controller {
        * */
       const url = `http://www.wxapidev.cn/wxsimulator/?deviceid=${deviceid}`;
       const str = `jsapi_ticket=${jsapi_ticket.value}&noncestr=${nonceStr}&timestamp=${timestamp}&url=${url}`;
+      console.log(str);
       const sign = sha1(str);
       this.ctx.body = sign;
     }
