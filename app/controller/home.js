@@ -19,6 +19,10 @@ const jsapi_ticket = {
 class HomeController extends Controller {
   async index() {
     this.ctx.body = 'hi, egg';
+    // await this.ctx.render('index.html');
+  }
+  async render() {
+    await this.ctx.render('MP_verify_LKjzWT0wexOEhYuS.txt');
   }
   async WXtoken() {
     console.log('验证token');
@@ -40,6 +44,9 @@ class HomeController extends Controller {
     const { nonceStr, timestamp, deviceid } = this.ctx.query;
     if (access_token.value === null || (Date.now() - access_token.expire) > access_token.timeout ||
       jsapi_ticket.value === null || (Date.now() - jsapi_ticket.expire) > jsapi_ticket.timeout) {
+      /**
+       * TODO: 使用app.curl重写这块内容，当时没来得及看egg文档
+       * */
       const self = this;
       const options = {
         uri: 'https://api.weixin.qq.com/cgi-bin/token',
