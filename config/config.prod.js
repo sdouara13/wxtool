@@ -8,6 +8,8 @@ module.exports = appInfo => {
 
   // add your config here
   config.middleware = [];
-
+  config.siteFile = {
+    '/MP_verify_LKjzWT0wexOEhYuS.txt': 'http://www.wxapidev.cn/auth/MP_verify_LKjzWT0wexOEhYuS.txt',
+  };
   return config;
 };

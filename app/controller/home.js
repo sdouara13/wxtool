@@ -1,28 +1,28 @@
 'use strict';
 
 const sha1 = require('sha1');
-const request = require('request-promise');
 const Controller = require('egg').Controller;
 
 const token = 'lidaibin';
 const config = require('../../config/wx');
+const storage = require('../../lib/storage');
 const access_token = {
   value: null,
   expire: null,
   timeout: 7200 * 1000,
 };
+const user_token = new Map();
+
 const jsapi_ticket = {
   value: null,
   expire: null,
   timeout: 7200 * 1000,
 };
+
 class HomeController extends Controller {
   async index() {
     this.ctx.body = 'hi, egg';
     // await this.ctx.render('index.html');
-  }
-  async render() {
-    await this.ctx.render('MP_verify_LKjzWT0wexOEhYuS.txt');
   }
   async WXtoken() {
     console.log('验证token');
@@ -41,76 +41,9 @@ class HomeController extends Controller {
     }
   }
   async getWXtoken() {
-    const { nonceStr, timestamp, deviceid } = this.ctx.query;
+    const { nonceStr, timestamp, url } = this.ctx.query;
     if (access_token.value === null || (Date.now() - access_token.expire) > access_token.timeout ||
       jsapi_ticket.value === null || (Date.now() - jsapi_ticket.expire) > jsapi_ticket.timeout) {
-      /**
-       * TODO: 使用app.curl重写这块内容，当时没来得及看egg文档
-       * */
-      // const self = this;
-      // const options = {
-      //   uri: 'https://api.weixin.qq.com/cgi-bin/token',
-      //   qs: {
-      //     grant_type: 'client_credential',
-      //     appid: config.appid,
-      //     secret: config.secret,
-      //   },
-      //   headers: {
-      //     'User-Agent': 'Request-Promise',
-      //   },
-      //   json: true,
-      // };
-      // request(options)
-      //   .then(res => {
-      //     console.log('申请accesstoken结果', res);
-      //     if (res.access_token) {
-      //       access_token.value = res.access_token;
-      //       access_token.expire = Date.now();
-      //       /**
-      //        * 获取jsapi_ticket
-      //        * */
-      //       const ticketOption = {
-      //         uri: 'https://api.weixin.qq.com/cgi-bin/ticket/getticket',
-      //         qs: {
-      //           access_token: access_token.value,
-      //           type: 'jsapi',
-      //         },
-      //         headers: {
-      //           'User-Agent': 'Request-Promise',
-      //         },
-      //         json: true,
-      //       };
-      //       return request(ticketOption);
-      //     }
-      //     access_token.value = null;
-      //     access_token.expire = null;
-      //     return new Promise((resolve, reject) => {
-      //       reject('结果中无access_token');
-      //     });
-      //   })
-      //   .then(res => {
-      //     if (res.ticket) {
-      //       console.log('更新ticket', res);
-      //       jsapi_ticket.value = res.ticket;
-      //       jsapi_ticket.expire = Date.now();
-      //       const url = `http://www.wxapidev.cn/wxsimulator/?deviceid=${deviceid}`;
-      //       const str = `jsapi_ticket=${jsapi_ticket.value}&noncestr=${nonceStr}&timestamp=${timestamp}&url=${url}`;
-      //       const sign = sha1(str);
-      //       self.ctx.body = sign;
-      //     } else {
-      //       return new Promise((resolve, reject) => {
-      //         reject('结果中无jsapi_ticket');
-      //       });
-      //     }
-      //   })
-      //   .catch(err => {
-      //     console.log('失败', err);
-      //     self.ctx.body = {
-      //       err,
-      //     };
-      //   });
-
-
       const result = await this.ctx.curl('https://api.weixin.qq.com/cgi-bin/token', {
         method: 'GET',
         dataType: 'json',
@@ -138,7 +71,6 @@ class HomeController extends Controller {
         if (ticketRes.data.ticket) {
           jsapi_ticket.value = ticketRes.data.ticket;
           jsapi_ticket.expire = Date.now();
-          const url = `http://www.wxapidev.cn/wxsimulator/?deviceid=${deviceid}`;
           const str = `jsapi_ticket=${jsapi_ticket.value}&noncestr=${nonceStr}&timestamp=${timestamp}&url=${url}`;
           const sign = sha1(str);
           this.ctx.body = sign;
@@ -154,11 +86,75 @@ class HomeController extends Controller {
       /**
        * 直接使用现有ticket
        * */
-      const url = `http://www.wxapidev.cn/wxsimulator/?deviceid=${deviceid}`;
       const str = `jsapi_ticket=${jsapi_ticket.value}&noncestr=${nonceStr}&timestamp=${timestamp}&url=${url}`;
       const sign = sha1(str);
       console.log(str, sign);
       this.ctx.body = sign;
+    }
+  }
+  async getUserAuth() {
+    const { code, grant_type, deviceid } = this.ctx.query;
+    // TODO: 用户信息获取有问题，每个code对应每个用户
+    const userToken = await this.ctx.curl('https://api.weixin.qq.com/sns/oauth2/access_token', {
+      method: 'GET',
+      dataType: 'json',
+      data: {
+        appid: config.appid,
+        secret: config.secret,
+        code,
+        grant_type,
+      },
+    });
+    console.log('获取用户token1', userToken.data);
+    if (userToken.data.access_token) {
+      user_token.set(userToken.data.access_token, {
+        openid: userToken.data.openid,
+        expire: Date.now(),
+        timeout: 7200 * 1000,
+        refresh_timeout: 3600 * 24 * 30 * 1000,
+        refresh_token: userToken.data.refresh_token,
+      });
+    } else {
+      this.ctx.body = '获取用户token失败';
+      return;
+    }
+    // if (user_token.value === null || (Date.now() - user_token.expire) > user_token.timeout) {
+    // Abandoned： 目前不需要刷新用户token
+    // // 若用户token失效，则刷新用户token
+    // const userToken = await this.ctx.curl('https://api.weixin.qq.com/sns/oauth2/refresh_token', {
+    //   method: 'GET',
+    //   dataType: 'json',
+    //   data: {
+    //     appid: config.appid,
+    //     refresh_token: user_refresh_token.value,
+    //     grant_type: 'refresh_token',
+    //   },
+    // });
+    // console.log('获取用户token2', userToken.data);
+    // if (userToken.data.access_token) {
+    //   user_token.value = userToken.data.access_token;
+    //   user_token.attr.openid = userToken.data.openid;
+    //   user_token.expire = Date.now();
+    // } else {
+    //   this.ctx.body = '获取用户token失败';
+    //   return;
+    // }
+    // }
+    const userInfo = await this.ctx.curl('https://api.weixin.qq.com/sns/userinfo', {
+      method: 'GET',
+      dataType: 'json',
+      data: {
+        access_token: userToken.data.access_token,
+        openid: userToken.data.openid,
+        lang: 'zh_CN',
+      },
+    });
+    console.log('获取用户信息', userInfo.data);
+    storage.user.set(deviceid, userInfo.data);
+    if (userInfo.data) {
+      this.ctx.body = userInfo.data;
+    } else {
+      this.ctx.body = '获取用户信息失败';
     }
   }
 }
